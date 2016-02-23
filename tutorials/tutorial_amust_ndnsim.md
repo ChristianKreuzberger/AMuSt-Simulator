@@ -8,6 +8,43 @@ Last but not least, we will show how to generate a large network using BRITE in 
 
 Throughout the tutorial we will assume that you are placing any code in the ndnSIM/ns-3/scratch folder, and that you are executing it from the ndnSIM/ns-3 folder.
 
+
+**Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
+
+- [Adaptive Multimedia Streaming Framework for ndnSIM  - Tutorial](#)
+	- [1. File Transfers](#)
+		- [Basics](#)
+		- [Hosting Content (Producer)](#)
+		- [Requesting Content (Consumer)](#)
+		- [Full Example: Basic File Transfer](#)
+		- [Tracing File Transfers](#)
+		- [Pipe-Lining Interests (Enhanced File Consumer)](#)
+		- [Testing File Transfers with Real Data](#)
+		- [Tracing Several File Consumers](#)
+		- [Hosting Virtual Files](#)
+		- [Summary](#)
+	- [2. Multimedia Streaming](#)
+		- [Hosting Multimedia/DASH Content](#)
+		- [Hosting Actual DASH Content](#)
+			- [DASH/AVC Streaming](#)
+			- [DASH/SVC Streaming](#)
+			- [Creating a Server](#)
+		- [Hosting Real Content using FakeFileServer](#)
+		- [Hosting Virtual Content using FakeMultimediaServer](#)
+	- [Basics: Using the Multimedia Consumer](#)
+		- [AVC Content](#)
+		- [SVC Content](#)
+	- [Multimedia Consumers Options](#)
+	- [Multimedia Consumers and Tracers](#)
+		- [Other Tracers](#)
+	- [3. Building Large Networks with BRITE and Installing Multimedia Clients](#)
+	- [Basics](#)
+	- [Random Network](#)
+	- [Installing the NDN Stack, Multimedia Clients, Routing, ...](#)
+
+
+
+
 ------------------
 ## 1. File Transfers
 Unfortunately, at the time of writing this extension to the simulator, ndnSIM did not provide any implementation for transfering files. In addition, fragmentation of packets was also not implemented, leading to a packet size of roughly 1400 bytes, similar of TCP transfer (just without fragmentation). The only implemented application that come close are the consumer and producer app (resp. ndn-app-consumer-cbr and ndn-app-producer). 
