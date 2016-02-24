@@ -7,6 +7,19 @@ This is the main repository for all AMuSt (Adaptive Multimedia Streaming) reposi
  * [AMuSt-ndnSIM](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM) - a modified version of Named Data Networking Simulator (ndnSIM) for AMuSt
 
 
+## Installation Instructions
+Installation instructions can be found in the respective repositories:
+
+ * [AMuSt-ns3](https://github.com/ChristianKreuzberger/AMuSt-ns3) - a modified version of Network Simulator 3 (ns3) for AMuSt
+ * [AMuSt-ndnSIM](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM) - a modified version of Named Data Networking Simulator (ndnSIM) for AMuSt
+
+## Tutorials
+
+One of the goals was to make sure that the difference between writing scenario-code is as similar as possible for both, ndnSIM and ns-3. We have prepared two tutorials, one for ns-3 and one for ndnSIM, which are very similar, but address the specifics of the respective simulation environment.
+
+ * [AMuSt-ns3 Tutorial](tutorials/tutorial_amust_ns3.md) 
+ * [AMuSt-ndnSIM Tutorial](tutorials/tutorial_amust_ndnsim.md) 
+
 ## Citation
 We are currently working on a technical report/paper. For now, you can cite it by using the following text:
 

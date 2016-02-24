@@ -342,17 +342,89 @@ The full example is available here: [AMuSt-ndnSIM/examples/ndn-file-simple-examp
 In this chapter, we have presented the basics of file transfers in AMuSt-ndnSIM. We can now use this for implementing adaptive multimedia streaming (which is the main purpose of this simulator).
 
 ------------------
-## 2. Multimedia Streaming
+## 2. Hosting Multimedia Files
 For multimedia streaming, we use the concept of Dynamic Adaptive Streaming over HTTP, adapted for the file transfer logic from Part 1. We make use of an extended version of bitmovins [libdash](https://github.com/bitmovin/libdash), which is an open source library for MPEG-DASH. Our version, [AMuSt-libdash](https://github.com/ChristianKreuzberger/AMuSt-libdash/) includes a dummy multimedia player, video playback buffer and several adaptation logics.
 
-### Hosting Multimedia/DASH Content
-Hosting DASH content is as simple as telling the ``FileServer`` to host a directory with the DASH content. We can basically use any MPEG-DASH compatible video stream, as long as the Media Presentation Description (MPD) file can be parsed by libdash (Note: we only support BASIC MPD structures, with only one period, and no wildcards).
-
-Alternatively, content can also be hosted by using the ``FakeFileServer`` and a .csv file containing all names and filesizes of all multimedia files. However, the MPD file needs to be provided (and can not be hosted on ``FakeFileServer``). Yet another method of hosting DASH content is achieved by providing only the information of which representations the video should have. This is handled by ``FakeMultimediaServer``. In the following we will show examples for all three approaches. 
+Before we talk any more about the client, we describe the process of hosting DASH multimedia content. Hosting DASH content is as simple as telling the ``FileServer`` (see previous chapter) to host a directory with the DASH content. We can basically use any MPEG-DASH compatible video stream, as long as the Media Presentation Description (MPD) file can be parsed by libdash (Note: we only support BASIC MPD structures, with only one period, and no wildcards). 
 
 
+Alternatively, content can also be hosted by using the ``FakeFileServer`` and a .csv file containing all names and filesizes of all multimedia files. However, the MPD file still needs to be provided by ``FileServer`` (can not be done with ``FakeFileServer``). This process has the advantage of still using a realistic dataset but avoiding the overhead of storing multiple gigabyte of (unnecessary) data on permanent storage.
 
-### Hosting Actual DASH Content
+
+Yet another method of hosting DASH content is achieved by providing only the information of which representations the video should have. This is handled by ``FakeMultimediaServer``. The big disadvantage of this approach is that all segments of one representation have the exact same size, something that is not necessarily true in real world multimedia applications. However, this method has almost no storage overhead and is most likely the easiest one to start with.
+
+In the following we will show examples for all three approaches, starting with the easiest one (``FakeMultimediaServer``), followed by ``FileServer`` and ``FakeFileServer``.
+
+
+### Hosting Virtual Content using ``FakeMultimediaServer``
+Netflix has [announced](http://techblog.netflix.com/2015/12/per-title-encode-optimization.html) which adaptive streaming representations they have been using in the past in a [blog post](http://techblog.netflix.com/2015/12/per-title-encode-optimization.html). For convenience, here they are:
+
+```
+reprId,screenWidth,screenHeight,bitrate
+1,320,240,235
+2,384,288,375
+3,512,384,560
+4,512,384,750
+10,640,480,1050
+11,720,480,1750
+20,1280,720,2350
+21,1280,720,3000
+30,1920,1080,4300
+31,1920,1080,5800
+``` 
+
+The convenient thing about ``FakeMultimediaServer`` is that we only need to provide those (purposely CSV-formatted) data and some more in a CSV file (netflix_vid1.csv):
+```
+segmentDuration=2
+numberOfSegments=1800
+reprId,screenWidth,screenHeight,bitrate
+1,320,240,235
+2,384,288,375
+3,512,384,560
+4,512,384,750
+10,640,480,1050
+11,720,480,1750
+20,1280,720,2350
+21,1280,720,3000
+30,1920,1080,4300
+31,1920,1080,5800
+```
+
+Config: ``segmentDuration`` specifies the duration of a segment in seconds (2 is a kind-of industry-standard) and ``numberOfSegments`` specifies the number of segments for a video. In this case, the length of the video would be 3600 seconds (60 minutes). The CSV format below contains the representation identifier (reprId, integer), screen width / height (integer), and a bitrate in kbit/s (integer). 
+
+If you want to have several videos with various lengths, you need to provide several CSV files. For convenience, we have uploaded example files for [Netflix here](../representations/). Last but not least, we need to configure a server, which is shown in the code example below:
+```
+  ndn::AppHelper fakeDASHProducerHelper("ns3::ndn::FakeMultimediaServer");
+
+  // This fake multimedia producer will reply to all requests starting with /myprefix/FakeVid1
+  fakeDASHProducerHelper.SetPrefix("/myprefix/FakeVid1");
+  fakeDASHProducerHelper.SetAttribute("MetaDataFile", StringValue("representations/netflix_vid1.csv"));
+  // We just give the MPD file a name that makes it unique
+  fakeDASHProducerHelper.SetAttribute("MPDFileName", StringValue("vid1.mpd"));
+
+  fakeDASHProducerHelper.Install(nodes.Get(0));
+
+  // We can install more then one fake multimedia producer on one node:
+
+  // This fake multimedia producer will reply to all requests starting with /myprefix/FakeVid2
+  fakeDASHProducerHelper.SetPrefix("/myprefix/FakeVid2");
+  fakeDASHProducerHelper.SetAttribute("MetaDataFile", StringValue("representations/netflix_vid2.csv"));
+  // We just give the MPD file a name that makes it unique
+  fakeDASHProducerHelper.SetAttribute("MPDFileName", StringValue("vid2.mpd"));
+
+
+  // This fake multimedia producer will reply to all requests starting with /myprefix/FakeVid3
+  fakeDASHProducerHelper.SetPrefix("/myprefix/FakeVid3");
+  fakeDASHProducerHelper.SetAttribute("MetaDataFile", StringValue("representations/netflix_vid3.csv"));
+  // We just give the MPD file a name that makes it unique
+  fakeDASHProducerHelper.SetAttribute("MPDFileName", StringValue("vid3.mpd"));
+
+```
+
+You can find the full example, including clients (which we will discuss later), in TODO.
+
+
+### Hosting Actual DASH Content with ``FileServer``
 While there are plenty of programs out there to create MPEG-DASH streams, reproducability of demos and simulations is a key problem. Therefore we recommend using existing datasets, and we refer to the following two datasets for MPEG-DASH Videos:
 
 * [DASH/AVC Dataset](http://www-itec.uni-klu.ac.at/dash/?page_id=207) by Lederer et al. [[PDF]](http://www-itec.uni-klu.ac.at/bib/files/p89-lederer.pdf) [[Bib]](http://www-itec.uni-klu.ac.at/bib/index.php?key=Mueller2012&bib=itec.bib) [[Website]](http://www-itec.uni-klu.ac.at/dash/?page_id=207) (we recommend using the older 2012 version for testing purpose)
@@ -360,7 +432,7 @@ While there are plenty of programs out there to create MPEG-DASH streams, reprod
 
 In the following, we will provide an example for multimedia streaming with DASH/AVC and DASH/SVC, based on those two datasets. We selected the Big Buck Bunny movie to achieve compareable results.
 
-#### DASH/AVC Streaming
+#### DASH/AVC
 **Note:** This will require roughly 4 Gigabyte of diskspace
 We are going to download the BigBuckBunny movie from the DASH/AVC Dataset, segment length 2 seconds.
 First of all, download the video files from [here](http://www-itec.uni-klu.ac.at/ftp/datasets/mmsys12/BigBuckBunny/bunny_2s/):
@@ -389,7 +461,7 @@ Furthermore, we recommend renaming the file to a name of your choice, e.g., BBB-
 mv BigBuckBunny_2s_isoffmain_DIS_23009_1_v_2_1c2_2011_08_30.mpd BBB-2s.mpd
 ```
 
-#### DASH/SVC Streaming
+#### DASH/SVC
 **Note:** This will require roughly 1 Gigabyte of diskspace
 We are going to download the BigBuckBunny movie from the DASH/SVC Dataset, with a segment length of 2 seconds, and no temporal scalability. First of all, download the video files from [here](http://concert.itec.aau.at/SVCDataset/dataset/BBB/III/segs/).
 ```bash
@@ -413,7 +485,7 @@ to
 <BaseURL>/myprefix/SVC/BBB/III/</BaseURL>
 ```
 
-#### Creating a Server
+#### Creating a Server with Above Datasets
 Finally, creating a server is as simple as:
 ```cplusplus
   // Producer
@@ -430,8 +502,7 @@ Finally, creating a server is as simple as:
 TODO
 
 
-### Hosting Virtual Content using FakeMultimediaServer
-TODO
+
 
 
 ## Basics: Using the Multimedia Consumer
