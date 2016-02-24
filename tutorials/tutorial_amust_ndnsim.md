@@ -1,48 +1,12 @@
 # Adaptive Multimedia Streaming Framework for ndnSIM  - Tutorial
 **Note:** This tutorial requires you to have a working installation of [AMuSt-ndnSIM](http://github.com/ChristianKreuzberger/AMuSt-ndnSIM). See the information about installation [here](http://github.com/ChristianKreuzberger/AMuSt-ndnSIM#installing-procedure).
 
-Within this tutorial, we will try to cover simple examples like file-transfers, up to building a large example with several multimedia streaming clients.
+Within this tutorial, we will try to cover simple examples like file-transfers, up to building a large example with several multimedia streaming clients. Before you go too deep into trying out examples, make sure to always double check the (relative) paths usied in the examples. For intance, we assume that multimedia data are stored in ``/home/someuser/multimediaData``, whereas you might want to replace ``someuser`` with your username. 
 
 AMuSt-ndnSIM consists of two major components: a generic file transfer for NDN and a multimedia streaming specific app. Therefore, this tutorial is organized as follows: Section 1 explains how the file transfers are organized and implemented. Section 2 explains how adaptive multimedia streaming can be used in AMuSt-ndnSIM. 
 Last but not least, we will show how to generate a large network using BRITE in Section 3.
 
-Throughout the tutorial we will assume that you are placing any code in the ndnSIM/ns-3/scratch folder, and that you are executing it from the ndnSIM/ns-3 folder.
-
-
-**Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
-
-- [Adaptive Multimedia Streaming Framework for ndnSIM  - Tutorial](#)
-	- [1. File Transfers](#)
-		- [Basics](#)
-		- [Hosting Content (Producer)](#)
-		- [Requesting Content (Consumer)](#)
-		- [Full Example: Basic File Transfer](#)
-		- [Tracing File Transfers](#)
-		- [Pipe-Lining Interests (Enhanced File Consumer)](#)
-		- [Testing File Transfers with Real Data](#)
-		- [Tracing Several File Consumers](#)
-		- [Hosting Virtual Files](#)
-		- [Summary](#)
-	- [2. Multimedia Streaming](#)
-		- [Hosting Multimedia/DASH Content](#)
-		- [Hosting Actual DASH Content](#)
-			- [DASH/AVC Streaming](#)
-			- [DASH/SVC Streaming](#)
-			- [Creating a Server](#)
-		- [Hosting Real Content using FakeFileServer](#)
-		- [Hosting Virtual Content using FakeMultimediaServer](#)
-	- [Basics: Using the Multimedia Consumer](#)
-		- [AVC Content](#)
-		- [SVC Content](#)
-	- [Multimedia Consumers Options](#)
-	- [Multimedia Consumers and Tracers](#)
-		- [Other Tracers](#)
-	- [3. Building Large Networks with BRITE and Installing Multimedia Clients](#)
-	- [Basics](#)
-	- [Random Network](#)
-	- [Installing the NDN Stack, Multimedia Clients, Routing, ...](#)
-
-
+Throughout the tutorial we will assume that you are placing any code in the ndnSIM/ns-3/scratch folder, and that you are executing the scenarios by using ``./waf --run scenario_name`` within the ndnSIM/ns-3 folder.
 
 
 ------------------
@@ -54,7 +18,7 @@ First, we will talk about the basics of the file transfer, followed by an exampl
 ### Basics
 Therefore we implemented a very basic FileServer (resp. ``ns3::ndn::FileServer``) and a FileConsumer (resp. ``ns3::ndn::FileConsumer``) for basic file transfers. Configuring the FileServer is simple: It only needs to know under which prefix (e.g., /myprefix) it needs to host files and where to find files to host. The FileServer automatically handles fragmentation/segmentation of files that do not fit within a single packet. Based on the Maximum Transmission Unit (MTU), the FileServer aims to always fully utilize the MTU by automatically maximizing the payload size. This immediately leads to a limitation of the network: The MTU needs to be the same for the whole network (e.g., 1500).
 
-We achieved fragmentation by providing a so called Manifest for each file, which contains the number of fragments to request and the file size. A typical file transfer based on this implementation looks like this: first, an interest for ``/prefix/app/File1.txt/Manifest`` is issued. Second, the consumer will start to sequentially issue Interests for the chunks: ``/prefix/app/File1.txt/1``, ``/prefix/app/File1.txt/2``, ... ``/prefix/app/File1.txt/#n`` (where #n is the number of fragments). The numbers (also referred to as sequence numbers) are appeneded to the interest with a binary encoding by using ``ndn::Name::appendSequenceNumber``. 
+We achieved fragmentation by providing a so called Manifest for each file, which contains the number of fragments to request and the file size. A typical file transfer based on this implementation looks like this: first, an interest for ``/myprefix/app/File1.txt/Manifest`` is issued. Second, the consumer will start to sequentially issue Interests for the chunks: ``/myprefix/app/File1.txt/1``, ``/myprefix/app/File1.txt/2``, ... ``/myprefix/app/File1.txt/#n`` (where #n is the number of fragments). The numbers (also referred to as sequence numbers) are appeneded to the interest with a binary encoding by using ``ndn::Name::appendSequenceNumber``. 
 The FileServer will respond with the respective payload, and the file consumer will stop requesting once it has received the whole file. The consumer also handles timeouts and re-transmissions if necessary. 
 
 
@@ -68,7 +32,7 @@ As already mentioned, hosting content does not require any special attention. Yo
 
   // Producer will reply to all requests starting with /prefix
   producerHelper.SetPrefix("/myprefix");
-  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/username/somedata/"));
+  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/somedata/"));
   producerHelper.Install(nodes.Get(2)); // install to a node from the nodecontainer
 ```
 This will make the directory  ``/home/someuser/somedata/`` and all contents (including sub-directories) fully available under the ndn prefix ``/myprefix`` within the simulator. 
@@ -421,7 +385,7 @@ If you want to have several videos with various lengths, you need to provide sev
 
 ```
 
-You can find the full example, including clients (which we will discuss later), in TODO.
+You can find the full example, including clients (which we will discuss later), in [AMuSt-ndnSIM/examples/ndn-multimedia-avc-fake-multimedia-server.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-avc-fake-multimedia-server.cpp).
 
 
 ### Hosting Actual DASH Content with ``FileServer``
@@ -490,6 +454,7 @@ wget -r --no-parent --no-host-directories --no-directories http://concert.itec.a
 ```
 Second, download the [MPD file](http://concert.itec.aau.at/SVCDataset/dataset/mpd/BBB-III.mpd).
 ```bash
+cd .. # go one directory up
 wget http://concert.itec.aau.at/SVCDataset/dataset/mpd/BBB-III.mpd
 ```
 Open the MPD in an editor of your choice, and locate the ``<BaseURL>`` tag. Change
@@ -500,6 +465,8 @@ to
 ```xml
 <BaseURL>/myprefix/SVC/BBB/III/</BaseURL>
 ```
+
+
 
 #### Creating a Server with Above Datasets
 Finally, creating a server is as simple as:
@@ -556,7 +523,7 @@ See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ChristianKr
 
 ## 3. Using the Multimedia Consumer
 
-In this section we will talk about the multimedia consumer and how to use it, with both AVC and SVC content.
+In this section we will talk about the multimedia consumer and how to use it, with both AVC and SVC content. We are assuming that you are using BBB as explained above.
 
 ### AVC Content
 Our multimedia consumers are built on top of the FileConsumers, therefore it is necessary to specify which FileConsumer you want. We recommend using the ``FileConsumerCbr`` class, hence you should use the following code for requesting AVC content:
@@ -571,7 +538,7 @@ Our multimedia consumers are built on top of the FileConsumers, therefore it is 
   consumerHelper.SetAttribute("StartUpDelay", StringValue("0.1"));
 
   consumerHelper.SetAttribute("AdaptationLogic", StringValue("dash::player::RateAndBufferBasedAdaptationLogic"));
-  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/AVC/BBB/BBB-2s.mpd" )));
+  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/AVC/BBB-2s.mpd" )));
 
   ApplicationContainer app1 = consumerHelper.Install (nodes.Get(2));
 ```
@@ -593,7 +560,7 @@ This is very similar to the AVC case, you just need to specify a different adapt
   consumerHelper.SetAttribute("StartUpDelay", StringValue("0.1"));
 
   consumerHelper.SetAttribute("AdaptationLogic", StringValue("dash::player::SVCBufferBasedAdaptationLogic"));
-  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/SVC/BBB/BBB-III.mpd" )));
+  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/SVC/BBB-III.mpd" )));
 
   ApplicationContainer app1 = consumerHelper.Install (nodes.Get(2));
 ```
@@ -602,13 +569,13 @@ This is very similar to the AVC case, you just need to specify a different adapt
 See [examples/ndn-multimedia-simple-svc-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-svc-example1.cpp) for the full example.
 
 
-## Multimedia Consumers Options
+### Multimedia Consumers Options
 Our Multimedia Consumers have plenty of options to be configured. First of all, the two most important ones are 
 
  * ``AdaptationLogic`` 
  *  ``MpdFileToRequest``
 
-``MpdFileToRequest`` is, like the name suggests, the MPD file of the video to play. For the purpose of having a quicker start-up, it is possible to use gzip'ed MPD files here, by specifying a file like this: ``mpdfilename.mpd.gz``(the file obviously needs to be available in the directory).
+``MpdFileToRequest`` is, like the name suggests, the MPD file of the video to play. For the purpose of having a quicker start-up time, it is possible to use gzip'ed MPD files here, by specifying a file like this: ``mpdfilename.mpd.gz``(the file obviously needs to be available in the directory).
 ``AdaptationLogic``  depends heavily on the MPD file. If the MPD file contains SVC content, the following adaptation logics are available: 
 
  * ``SVCBufferBasedAdaptationLogic`` - Buffer based adaptation logic for SVC, based on BIEB (Sieber et al., [Implementation and User-centric Comparison of a Novel Adaptation Logic for DASH with SVC](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6573184&tag=1)) with alpha=8 and gamma=16 - make sure to set ``MaxBufferedSeconds`` to at least ``gamma + 2 * alpha + 1`` (in this case 33), we recommend setting it to at least 60
@@ -643,7 +610,7 @@ The ``StartUpDelay`` is used for scenarios, where you want the client to buffer 
 
  * ``StartRepresentationId`` (default: "auto")
 
-Can take the following values: "lowest", "auto" (means: use adaptation logic) or a certain representation id. This attribute is for testing purpose, and we recommend using "auto".
+Can take the following values: "lowest", "auto" (means: use adaptation logic) or a certain representation id. This attribute is for testing purpose, and we recommend using the default setting "auto".
 
 ## Multimedia Consumers and Tracers
 For evaluation purpose, we have a special tracer for multimedia consumers available. This tracer logs the following events:
@@ -654,8 +621,6 @@ For evaluation purpose, we have a special tracer for multimedia consumers availa
 
 Example:
 ```cplusplus
-// include the header file
-#include "ns3/ndnSIM/utils/tracers/ndn-dashplayer-tracer.hpp"
 
 // ...
 int
@@ -671,37 +636,42 @@ main(int argc, char* argv[])
 }
 ```
 
-The output will be a CSV file called dash-output.txt, and look like this (for SVC content)
+The output will be a CSV file called ``dash-output.txt`` (or whatever you specify), and looks like this (i.e., for AVC content)
 ```
-Time  Node  SegmentNumber   SegmentDuration(sec)  SegmentRepID SegmentBitrate(bit/s)  StallingTime(msec) SegmentDepIds
-0.42821 2       0                 2                        0               624758                  0
-2.42821 2       1                 2                        0               624758                  0
+Time    Node    SegmentNumber   SegmentRepID    SegmentExperiencedBitrate(bit/s)        BufferLevel(s)  StallingTime(msec)      SegmentDepIds
+0.881616        2       0       13      7862849 0       881
+2.88162 2       1       13      7710636 2       0
+4.88162 2       2       13      8065030 4       0
+6.88162 2       3       18      8911272 4       0
+8.88162 2       4       19      9058920 4       0
+10.8816 2       5       19      9016160 8       0
+12.8816 2       6       19      8992737 10      0
+14.8816 2       7       19      8978521 10      0
+16.8816 2       8       19      8367449 10      0
+18.8816 2       9       19      8051206 10      0
+20.8816 2       10      19      8302074 12      0
+22.8816 2       11      19      8534599 12      0
+24.8816 2       12      19      9062071 14      0
+26.8816 2       13      19      9028393 18      0
+28.8816 2       14      19      9036475 18      0
+30.8816 2       15      19      9059804 20      0
 ...
-18.4282 2       9                 2                        0               624758                  0
-20.4282 2       10                2                        1               2122081                 0       0
-...
-26.4282 2       13                2                        1               2122081                 0       0
-28.4282 2       14                2                        2               5108358                 0       0,1
-30.4282 2       15                2                        2               5108358                 0       0,1
-32.4282 2       16                2                        2               5108358                 0       0,1
-34.4282 2       17                2                        2               5108358                 0       0,1
-36.4282 2       18                2                        3               9885231                 0       0,1,2
-38.4282 2       19                2                        3               9885231                 0       0,1,2
-...
-```
-AVC content will look similar, but will not have the SegmentDepIds filled at all.
 
-See examples/ndn-multimedia-simple-avc-example2-tracer.cpp and See examples/ndn-multimedia-simple-svc-example2-tracer.cpp for the full sourcecode.
+```
+SVC content will look similar, but will have the SegmentDepIds (Segment Dependency Representation IDs) filled.
+
+See [AMuSt-ndnSIM/examples/ndn-multimedia-simple-avc-example2-tracer.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-avc-example2-tracer.cpp) and [examples/ndn-multimedia-simple-svc-example2-tracer.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-svc-example2-tracer.cpp) for the full sourcecode.
+
 
 ### Other Tracers
 For evaluation purposes most other tracers should also work, for instance, Content Store Tracer. Please note, that due to some limitations with ns-3/ndnSIM, the AppId of the MultimediaConsumer will change over time, therefore you need to filter the Node (```NodeId```), instead of ```AppId``` in all traces.
 
-See [examples/ndn-multimedia-simple-avc-example2-tracers.cpp](examples/ndn-multimedia-simple-avc-example2-tracers.cpp) and [examples/ndn-multimedia-simple-svc-example2-tracers.cpp](examples/ndn-multimedia-simple-svc-example2-tracers.cpp) for the full example.
-
 ------------------
 
-## 3. Building Large Networks with BRITE and Installing Multimedia Clients
-## Basics
+## 4. Building Large Networks with BRITE and Installing Multimedia Clients
+TODO
+
+
 The [BRITE Network Generator](http://www.cs.bu.edu/brite/) is an open source project, which can be used by ndnSIM/ns-3. We have set up a wrapper class (see [helper/ndn-brite-topology-helper.cpp](helper/ndn-brite-topology-helper.cpp) and  [helper/ndn-brite-topology-helper.hpp](helper/ndn-brite-topology-helper.hpp)). All you need is a brite config file.
 
 
@@ -723,7 +693,7 @@ The [BRITE Network Generator](http://www.cs.bu.edu/brite/) is an open source pro
 
 You can find the full example later. 
 
-## Random Network
+### Random Network
 Use the ``--RngRun=`` option of [ns-3 Random Variables](https://www.nsnam.org/docs/manual/html/random-variables.html#id1) to generate different instances of the random network.
 
 Example:
