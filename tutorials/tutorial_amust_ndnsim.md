@@ -312,7 +312,7 @@ file2.img,1500000
 file3.img,2000000
 ```
 Assuming this file is called fake.csv, the producer and consumer configuration will look like this:
-```
+```cplusplus
   // Consumer
   ndn::AppHelper consumerHelper("ns3::ndn::FileConsumerCbr");
   
@@ -393,7 +393,7 @@ reprId,screenWidth,screenHeight,bitrate
 Config: ``segmentDuration`` specifies the duration of a segment in seconds (2 is a kind-of industry-standard) and ``numberOfSegments`` specifies the number of segments for a video. In this case, the length of the video would be 3600 seconds (60 minutes). The CSV format below contains the representation identifier (reprId, integer), screen width / height (integer), and a bitrate in kbit/s (integer). 
 
 If you want to have several videos with various lengths, you need to provide several CSV files. For convenience, we have uploaded example files for [Netflix here](../representations/). Last but not least, we need to configure a server, which is shown in the code example below:
-```
+```cplusplus
   ndn::AppHelper fakeDASHProducerHelper("ns3::ndn::FakeMultimediaServer");
 
   // This fake multimedia producer will reply to all requests starting with /myprefix/FakeVid1
@@ -461,6 +461,22 @@ Furthermore, we recommend renaming the file to a name of your choice, e.g., BBB-
 mv BigBuckBunny_2s_isoffmain_DIS_23009_1_v_2_1c2_2011_08_30.mpd BBB-2s.mpd
 ```
 
+Last but not least, we would like to separate the mpd file from the segments. Therefore we move the mpd file up by one folder (to ~/multimediaData/AVC/):
+
+```bash
+mv BBB-2s.mpd ../
+```
+
+Finally, your directories should look like this:
+
+ * multimediaData/AVC/
+    * BBB-2s.mpd
+    * BBB/
+        * bunny_2s_50kbit/*.m4s
+        * bunny_2s_100kbit/*.m4s
+        * ...
+        * bunny_2s_8000kbit/*.m4s
+
 #### DASH/SVC
 **Note:** This will require roughly 1 Gigabyte of diskspace
 We are going to download the BigBuckBunny movie from the DASH/SVC Dataset, with a segment length of 2 seconds, and no temporal scalability. First of all, download the video files from [here](http://concert.itec.aau.at/SVCDataset/dataset/BBB/III/segs/).
@@ -493,19 +509,55 @@ Finally, creating a server is as simple as:
 
   // Producer will reply to all requests starting with /myprefix
   producerHelper.SetPrefix("/myprefix");
-  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/username/multimediaData/"));
+  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/username/multimediaData"));
   producerHelper.Install(nodes.Get(0)); // install to some node from nodelist
 
 ```
 
+
+See [examples/ndn-multimedia-avc-server.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-avc-server.cpp) for the full example for AVC. 
+
 ### Hosting Real Content using FakeFileServer
-TODO
+This part assumes that you followed the DASH Dataset part just before this section. You probably noticed that a good portion of storage space is gone. To counter this problem, we provide ``FakefileServer`` with a CSV file for BBB (AVC), which you can get [here](../datasets/segmentlist/). This file contains a list of all segments and their size. We generated this list by first downloading the dataset and then using some Linux command line magic (mainly sed and awk):
+```shell
+find . -type f -exec du -a {} + | sed 's/[ \t]/,/g' | sed 's/\.\///g' | awk -F $',' ' { t = $1; $1 = $2; $2 = t; print; } ' OFS=$',' > list_of_files.csv
+```
+
+Now we need to configure two producers as follows
+
+ * ``FileServer`` hosts the actual MPD file of BBB at /myprefix/AVC
+ * ``FakeFileServer``hosts the virtual segments of BBB at /myprefix/AVC/BBB
+
+
+```cplusplus
+  // Producer responsible for hosting the MPD file
+  ndn::AppHelper mpdProducerHelper("ns3::ndn::FileServer");
+
+  // Producer will reply to all requests starting with /myprefix/AVC/ and hosts the mpd file there
+  mpdProducerHelper.SetPrefix("/myprefix/AVC");
+  mpdProducerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/multimediaData"));
+  mpdProducerHelper.Install(nodes.Get(0)); // install to some node from nodelist
+
+  // Producer responsible for hosting the virtual segments
+  ndn::AppHelper fakeSegmentProducerHelper("ns3::ndn::FakeFileServer");
+
+  // Producer will reply to all requests starting with /myprefix/AVC/BBB/ and hosts the virtual segment files there
+  fakeSegmentProducerHelper.SetPrefix("/myprefix/AVC/BBB");
+  fakeSegmentProducerHelper.SetAttribute("MetaDataFile", StringValue("dash_dataset_avc_bbb.csv"));
+  fakeSegmentProducerHelper.Install(nodes.Get(0)); // install to some node from nodelist
+```
+
+See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-avc-fake-server.cpp) for the full example.
 
 
 
 
 
-## Basics: Using the Multimedia Consumer
+
+## 3. Using the Multimedia Consumer
+
+In this section we will talk about the multimedia consumer and how to use it, with both AVC and SVC content.
+
 ### AVC Content
 Our multimedia consumers are built on top of the FileConsumers, therefore it is necessary to specify which FileConsumer you want. We recommend using the ``FileConsumerCbr`` class, hence you should use the following code for requesting AVC content:
 ```cplusplus
@@ -524,7 +576,8 @@ Our multimedia consumers are built on top of the FileConsumers, therefore it is 
   ApplicationContainer app1 = consumerHelper.Install (nodes.Get(2));
 ```
 
-See [examples/ndn-multimedia-simple-avc-example1.cpp](examples/ndn-multimedia-simple-avc-example1.cpp) for the full example.
+See [examples/ndn-multimedia-simple-avc-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-avc-example1.cpp) for the full example.
+
 
 ### SVC Content
 This is very similar to the AVC case, you just need to specify a different adaptation logic (and the correct MPD file):
@@ -546,7 +599,7 @@ This is very similar to the AVC case, you just need to specify a different adapt
 ```
 
 
-See [examples/ndn-multimedia-simple-svc-example1.cpp](examples/ndn-multimedia-simple-svc-example1.cpp) for the full example.
+See [examples/ndn-multimedia-simple-svc-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-svc-example1.cpp) for the full example.
 
 
 ## Multimedia Consumers Options
@@ -570,7 +623,7 @@ For AVC:
  * ``AlwaysLowestAdaptationLogic`` (default value) - use always the lowest representation available
  * ``RateBasedAdaptationLogic``- the estimated throughput is the main deciding factor for the representation used
  * ``RateAndBufferBasedAdaptationLogic`` - the clients local buffer and the estimated throughput will be used for determining the representation
-
+ * ``DASHJS`` - TODO
 
 
 Then we have several options that the clients can use for their "simulated screens":
